@@ -13,7 +13,7 @@ rcv[0]: 500
 snd[0]: 2
 rcv[0]: 2
 
-real	0m0.395s
-user	0m0.036s
-sys	  0m0.141s
+real  0m0.395s
+user  0m0.036s
+sys   0m0.141s
 ```
