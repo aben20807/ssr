@@ -37,7 +37,7 @@ DEALINGS IN THE SOFTWARE.
 using namespace boost::asio::ip;
 constexpr uint32_t RETRY_CONNECT = 1000;
 
-enum e_role : unsigned char { SERVER, CLIENT, ALL };
+enum e_role : unsigned char { SENDER, RECEIVER };
 namespace ssr {
 
 template <typename T> class Communicator {
@@ -134,9 +134,9 @@ public:
 template <typename T>
 Communicator<T> *init(e_role role, const std::string &address,
                       const uint16_t port) {
-  if (role == SERVER) {
+  if (role == SENDER) {
     return (Communicator<T> *)new Sender<T>(address, port);
-  } else {
+  } else { // RECEIVER
     return (Communicator<T> *)new Receiver<T>(address, port);
   }
 }

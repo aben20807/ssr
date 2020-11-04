@@ -3,10 +3,10 @@
 
 int main(int argc, char *argv[])
 {
-    e_role role = atoi(argv[1]) == 0 ? SERVER : CLIENT;
+    e_role role = atoi(argv[1]) == 0 ? SENDER : RECEIVER;
     ssr::Communicator<float> *float_comm = ssr::init<float>(role, "127.0.0.1", 8877);
     const uint32_t size = 10000000;
-    if (role == SERVER) {
+    if (role == SENDER) {
         float* snd = new float[size]();
         snd[0] = 5.0;
         float_comm->send(snd, size);
@@ -19,7 +19,7 @@ int main(int argc, char *argv[])
         delete[] rcv;
     }
 
-    if (role == SERVER) {
+    if (role == SENDER) {
         float* snd = new float[size]();
         snd[0] = 4.0;
         float_comm->send(snd, size);
@@ -32,7 +32,7 @@ int main(int argc, char *argv[])
         delete[] rcv;
     }
 
-    if (role == SERVER) {
+    if (role == SENDER) {
         float* snd = new float[size]();
         snd[0] = 3.0;
         float_comm->send(snd, size);
@@ -47,7 +47,7 @@ int main(int argc, char *argv[])
 
 
     ssr::Communicator<long> *long_comm = ssr::init<long>(role, "127.0.0.1", 8787);
-    if (role == SERVER) {
+    if (role == SENDER) {
         long* snd = new long[size]();
         snd[0] = 500;
         long_comm->send(snd, size);
@@ -61,7 +61,7 @@ int main(int argc, char *argv[])
     }
 
 
-    if (role == SERVER) {
+    if (role == SENDER) {
         float* snd = new float[size]();
         snd[0] = 2.0;
         float_comm->send(snd, size);
