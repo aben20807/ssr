@@ -9,7 +9,7 @@
 
 ## Features
 
-+ Header file only
++ Header-only
 + Blocking
 + Template
 
