@@ -37,7 +37,7 @@ DEALINGS IN THE SOFTWARE.
 using namespace boost::asio::ip;
 
 namespace ssr {
-constexpr uint32_t RETRY_CONNECT = 1000;
+constexpr uint32_t SSR_RETRY_CONNECT = 1000;
 enum e_role : unsigned char { SENDER, RECEIVER };
 
 template <typename T> class Communicator {
@@ -71,7 +71,7 @@ public:
     tcp::resolver resolver(this->m_context);
     tcp::resolver::iterator endpoint =
         resolver.resolve(tcp::resolver::query(host_addr, std::to_string(port)));
-    for (uint32_t i = 0; i < RETRY_CONNECT; i++) {
+    for (uint32_t i = 0; i < SSR_RETRY_CONNECT; i++) {
       boost::asio::connect(this->m_socket, endpoint, this->m_ec);
       if (!this->m_ec)
         break;
