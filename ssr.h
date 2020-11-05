@@ -35,10 +35,10 @@ DEALINGS IN THE SOFTWARE.
 #include <vector>
 
 using namespace boost::asio::ip;
-constexpr uint32_t RETRY_CONNECT = 1000;
 
-enum e_role : unsigned char { SENDER, RECEIVER };
 namespace ssr {
+constexpr uint32_t RETRY_CONNECT = 1000;
+enum e_role : unsigned char { SENDER, RECEIVER };
 
 template <typename T> class Communicator {
 public:
@@ -46,7 +46,7 @@ public:
       : m_socket(m_context) {
     boost::asio::io_context::work worker(m_context);
   }
-  ~Communicator() { close(); }
+  virtual ~Communicator() { close(); }
   void close() {
     m_context.stop();
     if (m_thread.joinable())
@@ -71,7 +71,7 @@ public:
     tcp::resolver resolver(this->m_context);
     tcp::resolver::iterator endpoint =
         resolver.resolve(tcp::resolver::query(host_addr, std::to_string(port)));
-    for (int i = 0; i < RETRY_CONNECT; i++) {
+    for (uint32_t i = 0; i < RETRY_CONNECT; i++) {
       boost::asio::connect(this->m_socket, endpoint, this->m_ec);
       if (!this->m_ec)
         break;
@@ -101,16 +101,14 @@ template <typename T> class Receiver : public Communicator<T> {
 public:
   Receiver(std::string const &host_addr, const uint16_t port)
       : Communicator<T>(host_addr, port) {
-    try {
-      tcp::acceptor acceptor(this->m_context, tcp::endpoint(tcp::v4(), port));
-      acceptor.accept(this->m_socket);
-      this->m_thread = std::thread([this]() { this->m_context.run(); });
-    } catch (std::exception &e) {
-      std::cerr << "[Receiver] Exception: " << e.what() << "\n";
+    tcp::acceptor acceptor(this->m_context, tcp::endpoint(tcp::v4(), port));
+    acceptor.accept(this->m_socket, this->m_ec);
+    if (this->m_ec) {
+      std::cerr << "[Receiver] Error: " << this->m_ec.message() << "\n";
     }
+    this->m_thread = std::thread([this]() { this->m_context.run(); });
   }
   void receive(T *const buffer, const int size) override {
-    std::vector<T> target(size);
     this->m_socket.wait(tcp::socket::wait_read, this->m_ec);
     boost::asio::read(this->m_socket, m_streambuf.prepare(size * sizeof(T)),
                       this->m_ec);
