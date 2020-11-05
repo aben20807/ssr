@@ -4,7 +4,7 @@
 int main(int argc, char *argv[])
 {
     ssr::e_role role = atoi(argv[1]) == 0 ? ssr::SENDER : ssr::RECEIVER;
-    ssr::Communicator<float> *float_comm = ssr::init<float>(role, "127.0.0.1", 8877);
+    auto float_comm = ssr::init<float>(role, "127.0.0.1", 8877);
     const uint32_t size = 10000000;
     if (role == ssr::SENDER) {
         float* snd = new float[size]();
@@ -55,7 +55,7 @@ int main(int argc, char *argv[])
     }
 
 
-    ssr::Communicator<long> *long_comm = ssr::init<long>(role, "127.0.0.1", 8787);
+    auto long_comm = ssr::init<long>(role, "127.0.0.1", 8787);
     if (role == ssr::SENDER) {
         long* snd = new long[size]();
         snd[0] = 500;
@@ -88,7 +88,5 @@ int main(int argc, char *argv[])
         p(rcv[size-1]);
         delete[] rcv;
     }
-    delete long_comm;
-    delete float_comm;
     return 0;
 }

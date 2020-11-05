@@ -82,8 +82,8 @@ public:
     }
     this->m_thread = std::thread([this]() { this->m_context.run(); });
   }
-  template <typename V, typename Allocator>
-  void send(std::vector<V, Allocator> const &message) {
+  template <typename Allocator>
+  void send(std::vector<T, Allocator> const &message) {
     this->m_socket.wait(tcp::socket::wait_write, this->m_ec);
     boost::asio::write(this->m_socket, boost::asio::buffer(message),
                        this->m_ec);
@@ -126,14 +126,17 @@ public:
 private:
   boost::asio::streambuf m_streambuf;
 };
+
 template <typename T>
-Communicator<T> *init(e_role role, const std::string &address,
-                      const uint16_t port) {
+std::unique_ptr<Communicator<T>> init(e_role role, const std::string &address,
+                                      const uint16_t port) {
+  std::unique_ptr<Communicator<T>> ret;
   if (role == SENDER) {
-    return (Communicator<T> *)new Sender<T>(address, port);
+    ret = std::make_unique<Sender<T>>(address, port);
   } else { // RECEIVER
-    return (Communicator<T> *)new Receiver<T>(address, port);
+    ret = std::make_unique<Receiver<T>>(address, port);
   }
+  return ret;
 }
 } // namespace ssr
 #endif /* SSR_H */
