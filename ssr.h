@@ -42,7 +42,7 @@ namespace ssr {
 
 template <typename T> class Communicator {
 public:
-  Communicator(std::string const &host, const uint16_t port)
+  Communicator(std::string const &host_addr, const uint16_t port)
       : m_socket(m_context) {
     boost::asio::io_context::work worker(m_context);
   }
@@ -61,34 +61,34 @@ protected:
   boost::asio::io_context m_context;
   tcp::socket m_socket;
   std::thread m_thread;
+  boost::system::error_code m_ec;
 };
 
 template <typename T> class Sender : public Communicator<T> {
 public:
-  Sender(std::string const &addr, const uint16_t port)
-      : Communicator<T>(addr, port) {
-    boost::system::error_code ec;
+  Sender(std::string const &host_addr, const uint16_t port)
+      : Communicator<T>(host_addr, port) {
     tcp::resolver resolver(this->m_context);
     tcp::resolver::iterator endpoint =
-        resolver.resolve(tcp::resolver::query(addr, std::to_string(port)));
+        resolver.resolve(tcp::resolver::query(host_addr, std::to_string(port)));
     for (int i = 0; i < RETRY_CONNECT; i++) {
-      boost::asio::connect(this->m_socket, endpoint, ec);
-      if (!ec)
+      boost::asio::connect(this->m_socket, endpoint, this->m_ec);
+      if (!this->m_ec)
         break;
       boost::this_thread::sleep_for(boost::chrono::milliseconds(10));
     }
-    if (ec) {
+    if (this->m_ec) {
       std::cerr << "[Sender] Connect failed due to timeout!\n";
     }
     this->m_thread = std::thread([this]() { this->m_context.run(); });
   }
   template <typename V, typename Allocator>
   void send(std::vector<V, Allocator> const &message) {
-    boost::system::error_code ec;
-    this->m_socket.wait(tcp::socket::wait_write, ec);
-    boost::asio::write(this->m_socket, boost::asio::buffer(message), ec);
-    if (ec) {
-      std::cerr << "[Sender] Send Error: " << ec.message() << "\n";
+    this->m_socket.wait(tcp::socket::wait_write, this->m_ec);
+    boost::asio::write(this->m_socket, boost::asio::buffer(message),
+                       this->m_ec);
+    if (this->m_ec) {
+      std::cerr << "[Sender] Send Error: " << this->m_ec.message() << "\n";
     }
   }
   void send(const T *const input, const int size) override {
@@ -99,8 +99,8 @@ public:
 
 template <typename T> class Receiver : public Communicator<T> {
 public:
-  Receiver(std::string const &addr, const uint16_t port)
-      : Communicator<T>(addr, port) {
+  Receiver(std::string const &host_addr, const uint16_t port)
+      : Communicator<T>(host_addr, port) {
     try {
       tcp::acceptor acceptor(this->m_context, tcp::endpoint(tcp::v4(), port));
       acceptor.accept(this->m_socket);
@@ -110,26 +110,23 @@ public:
     }
   }
   void receive(T *const buffer, const int size) override {
-    try {
-      boost::asio::streambuf sb;
-      boost::system::error_code ec;
-      this->m_socket.wait(tcp::socket::wait_read, ec);
-      std::vector<T> target(size);
-      boost::asio::read(this->m_socket, sb.prepare(size * sizeof(T)), ec);
-      // Ref: https://stackoverflow.com/a/28931673
-      sb.commit(size * sizeof(T));
-      buffer_copy(boost::asio::buffer(target), sb.data());
-      if (ec) {
-        std::cerr << "[Receiver] Receive Error: " << ec.message() << "\n";
-      }
-      for (int i = 0; i < size; i++) {
-        buffer[i] = target[i];
-      }
-    } catch (std::exception &e) {
-      std::cerr << "[Receiver] Receive Exception: " << e.what() << "\n";
-      exit(1);
+    std::vector<T> target(size);
+    this->m_socket.wait(tcp::socket::wait_read, this->m_ec);
+    boost::asio::read(this->m_socket, m_streambuf.prepare(size * sizeof(T)),
+                      this->m_ec);
+    // Ref: https://stackoverflow.com/a/28931673
+    m_streambuf.commit(size * sizeof(T));
+    // Ref: https://stackoverflow.com/a/28661429
+    memcpy(buffer, boost::asio::buffer_cast<const void *>(m_streambuf.data()),
+           size * sizeof(T));
+    if (this->m_ec) {
+      std::cerr << "[Receiver] Receive Error: " << this->m_ec.message() << "\n";
     }
+    m_streambuf.consume(size * sizeof(T));
   }
+
+private:
+  boost::asio::streambuf m_streambuf;
 };
 template <typename T>
 Communicator<T> *init(e_role role, const std::string &address,
